@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, AsyncStorage } from 'react-native';
 import 'react-native-gesture-handler';
 import * as React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -7,6 +7,8 @@ import { createMaterialBottomTabNavigator } from
 import {MaterialCommunityIcons} from '@expo/vector-icons'
 import { createStackNavigator } from '@react-navigation/stack';
 import TravelScreen from "./screen/components/TravelScreen";
+import { SplashScreen } from 'expo';
+
 
 //Screen
 import Home from './screen/components/Home';
@@ -15,29 +17,43 @@ import Serve from './screen/components/Serve';
 
 const Tab = createMaterialBottomTabNavigator();
 const Stack = createStackNavigator();
+const PERSISTENCE_KEY = "ALBUMS_NAVIGATION_STATE";
 
 const App = () => {
+
+  const [isLoadingComplete, setLoadingComplete] = React.useState(false);
+  const [initialNavigationState, setInitialNavigationState] = React.useState();
+
+  React.useEffect(() => {
+    async function loadResourcesAndDataAsync() {
+      try {
+        SplashScreen.preventAutoHide();
+        const savedStateString = await AsyncStorage.getItem(PERSISTENCE_KEY);
+        const state = JSON.parse(savedStateString);
+        setInitialNavigationState(state);
+      } catch (e) {
+        // We might want to provide this error information to an error reporting service
+        console.warn(e);
+      } finally {
+        setLoadingComplete(true);
+        SplashScreen.hide();
+      }
+    }
+    loadResourcesAndDataAsync();
+  }, []);
+
+  if (!isLoadingComplete) {
+    return null;
+  } else{
   return (
-  <NavigationContainer>
+  <NavigationContainer
+  initialState={initialNavigationState}
+  onStateChange={(state) =>
+    AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(state))
+  }
+  >
 
-      {/* <Stack.Navigator
-        initialRouteName="Home"
-
-        screenOptions={{
-          headerShown: false
-        }}
-      >
-        <Stack.Screen
-          name="Home"
-          component={Home}
-        />
-
-        <Stack.Screen
-          name="Travel"
-          component={TravelScreen}
-        />
-
-      </Stack.Navigator> */}
+    {/* Tab */}
 
   <Tab.Navigator
   initialRoute="Home"
@@ -70,9 +86,26 @@ const App = () => {
       ),
     }}
     />
+
+        <Stack.Screen
+          name="Home"
+          component={Home}
+        />
+
+        <Stack.Screen
+          name="Travel"
+          component={TravelScreen}
+        />
+
   </Tab.Navigator>
+
+  
   </NavigationContainer>
+
+    
+
   );
+}
 }
 
 const styles = StyleSheet.create({
